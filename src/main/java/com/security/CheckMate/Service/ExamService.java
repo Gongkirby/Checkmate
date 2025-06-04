@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.security.CheckMate.DTO.ExamCommand;
 import com.security.CheckMate.Domain.ExamAnswer;
 import com.security.CheckMate.Domain.User;
+import com.security.CheckMate.Security.AsymmetricKeyManager;
 import com.security.CheckMate.Security.Cryptogram;
 import com.security.CheckMate.Security.Envelope;
 import jakarta.servlet.http.HttpSession;
@@ -29,24 +30,24 @@ public class ExamService {
         // 나중에 DB 저장 또는 파일 저장 로직
         // 지금은 암호화로만 넘겨도 OK
         try {
-            encryptAnswer(session, json, user);
+            //encryptAnswer(session, json, user);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
 
-    public void encryptAnswer(HttpSession session, String json, User user) throws IOException, ClassNotFoundException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, SignatureException, IllegalBlockSizeException, BadPaddingException {
+    public void encryptAnswer(HttpSession session, String json, User user, User professor) throws IOException, ClassNotFoundException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, SignatureException, IllegalBlockSizeException, BadPaddingException {
         Envelope envelope = new Envelope();
 
-        String publicKeyFname = "public" + user.getUserName() + ".txt";
+        //교수님 공개키로 암호화해야
+        String publicKeyFname = "public" + professor.getUserName() + ".txt";
         FileInputStream fis = new FileInputStream(publicKeyFname);
         ObjectInputStream os = new ObjectInputStream(fis);
         PublicKey publicKey = (PublicKey) os.readObject();
 
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
         keyGen.init(256);
-        //SecretKey secretKey = keyGen.generateKey();
 
         byte[] keyBytes = new byte[32];
         SecureRandom random = new SecureRandom();
@@ -67,20 +68,26 @@ public class ExamService {
         secretKey = null;
     }
 
-    public boolean verifyExamAnswer(HttpSession session, User user) {
+    public boolean verifyExamAnswer(HttpSession session, User student, User professor) {
         try {
             byte[] publicKeyBytes = (byte[]) session.getAttribute("publicKeyBytes");
             // 검증 로직 ...
-            byte[] keyBytes = (byte[])session.getAttribute("secretKeyBytes");
+            //byte[] keyBytes = (byte[])session.getAttribute("secretKeyBytes");
 
             //byte[] keyBytes = new byte[32];
-            SecretKey secretKey = new SecretKeySpec(keyBytes, "AES");
+            //SecretKey secretKey = new SecretKeySpec(keyBytes, "AES");
+
+            AsymmetricKeyManager keyMan = new AsymmetricKeyManager();
+            PrivateKey privateKey = keyMan.loadPrivateKey("private" + professor.getUserName() + ".txt");
+
+            Envelope envelope = new Envelope();
+            SecretKey secretKey = envelope.decrypt(privateKey, student);
             System.out.println(Arrays.toString(secretKey.getEncoded()));
 
             System.out.println("Session ID in verifyExamAnswer: " + session.getId());
 
             Cryptogram cryptogram = new Cryptogram();
-            cryptogram.decrypt(user, secretKey);
+            cryptogram.decrypt(student, secretKey);
             return true;
         } catch (Exception e) {
             e.printStackTrace();

@@ -31,7 +31,10 @@ public class ExamController {
         //examSvc.makeExamAnswer(examCommand, json, session);
         System.out.println("submit Controller test");
         User user = (User) session.getAttribute("user");
-        examSvc.encryptAnswer(session, json, user);
+
+        User professor = new User("20000000", "professor", new String[]{"웹코드보안"});
+
+        examSvc.encryptAnswer(session, json, user, professor);
         return "submit";
     }
 
@@ -40,7 +43,10 @@ public class ExamController {
         String json = examSvc.toJson(examCommand);
         //examSvc.makeExamAnswer(examCommand, json, session);
         User user = (User) session.getAttribute("user");
-        examSvc.encryptAnswer(session, json, user);
+
+        User professor = new User("20000000", "professor", new String[]{"웹코드보안"});
+
+        examSvc.encryptAnswer(session, json, user, professor);
         return "submit";
     }
 
@@ -59,6 +65,10 @@ public class ExamController {
         keyMan.generate();
         keyMan.savePrivateKey("private" + user.getUserName() + ".txt");
         keyMan.savePublicKey("public" + user.getUserName() + ".txt");
+        User professor = new User("20000000", "professor", new String[]{"웹코드보안"});
+        keyMan.generate();
+        keyMan.savePrivateKey("private" + professor.getUserName() + ".txt");
+        keyMan.savePublicKey("public" + professor.getUserName() + ".txt");
 
         session.setAttribute("user", user);
         model.addAttribute("user", user);
@@ -87,7 +97,7 @@ public class ExamController {
     @PostMapping("/professor_exam")
     public String processStudentId(@RequestParam("studentId") String studentId, HttpSession session, Model model) {
         if ("20221234".equals(studentId)) {
-            User user = new User("20221234", "컴퓨터학과", new String[]{"웹코드보안"});
+            User student = new User("20221234", "student", new String[]{"웹코드보안"});
 
             // 세션에서 기존 답안 꺼내기 (예시)
             ExamCommand examCommand = (ExamCommand) session.getAttribute("examCommand");
@@ -99,10 +109,12 @@ public class ExamController {
             }
 
             model.addAttribute("message", "유효한 학번입니다.");
-            model.addAttribute("user", user);
+            model.addAttribute("user", student);
             model.addAttribute("examCommand", examCommand);
 
-            boolean valid = examSvc.verifyExamAnswer(session, user);
+            User professor = new User("20000000", "professor", new String[]{"웹코드보안"});
+
+            boolean valid = examSvc.verifyExamAnswer(session, student, professor);
             model.addAttribute("verification", valid ? "검증 성공" : "검증 실패");
         } else {
             model.addAttribute("message", "잘못된 학번입니다.");
